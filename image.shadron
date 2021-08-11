@@ -1,0 +1,20 @@
+#include <multisample>
+#include "ray_marcher.shadron"
+#include "camera.shadron"
+#include "sdf.shadron"
+
+glsl Surface sdScene(vec3 point) {
+  return Surface(sdfBox(point, vec3(1.0)), vec3(1.0, 0.0, 0.2));
+}
+
+glsl vec4 shader(vec2 pos) {
+  vec2 uv = pos - vec2(0.5);
+  uv.x *= shadron_Aspect;
+
+  Camera cam = Camera(vec3(0.0, 2.0, 10.0), vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0));
+  vec3 col = renderScene<sdScene>(cam, uv);
+
+  return vec4(col, 1.0);
+}
+
+image Scene = glsl(multisample<shader, 4>, 1024, 768);

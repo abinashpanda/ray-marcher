@@ -1,0 +1,64 @@
+#include <affine_transform>
+#include "camera.shadron"
+
+#define MAX_MARCHING_STEPS 255
+#define MAX_DIST 100.0
+#define MIN_DIST 0.0
+#define SURFACE_DIST 0.1
+#define EPSILON 0.001
+
+glsl struct Surface {
+  float d;
+  vec3 col;
+};
+
+template <SD_SCENE>
+glsl vec3 calcNormal(vec3 point) {
+  vec2 e = vec2(1, -1) * EPSILON;
+  return normalize(
+    e.xyy * SD_SCENE(point + e.xyy).d +
+    e.yyx * SD_SCENE(point + e.yyx).d +
+    e.yxy * SD_SCENE(point + e.yxy).d +
+    e.xxx * SD_SCENE(point + e.xxx).d
+  );
+}
+
+template <SD_SCENE>
+glsl Surface rayMarch(Ray ray, float start, float end) {
+  float depth = start;
+
+  Surface closestObject = Surface(0.0, vec3(0.0, 0.0, 0.0));
+  for (int i = 0; i < MAX_MARCHING_STEPS; i++) {
+    vec3 point = ray.rayOrigin + depth * ray.rayDirection;
+    closestObject = SD_SCENE(point);
+    depth += closestObject.d;
+    if (closestObject.d < SURFACE_DIST || depth > end) {
+      break;
+    }
+  }
+
+  closestObject.d = depth;
+  return closestObject;
+}
+
+template <SD_SCENE>
+glsl vec3 renderScene(Camera cam, vec2 uv) {
+  vec3 col = vec3(0.0);
+  vec3 backgroundColor = vec3(0.835, 1, 1);
+
+  Ray ray = getRay(cam, uv);
+  Surface closestObject = rayMarch<SD_SCENE>(ray, 0.0, MAX_DIST);
+  if (closestObject.d > MAX_DIST) {
+    col = backgroundColor;
+  } else {
+    vec3 point = ray.rayOrigin + closestObject.d * ray.rayDirection;
+    vec3 normal = calcNormal<SD_SCENE>(point);
+
+    vec3 lightPosition = vec3(2, 2, 7);
+    vec3 lightDirection = normalize(lightPosition - point);
+    float dif = clamp(dot(normal, lightDirection), 0, 1.); 
+    col = dif * closestObject.col + backgroundColor * .2;
+  }
+
+  return col;
+}

@@ -1,0 +1,35 @@
+#include <math_constants>
+#include <affine_transform>
+
+parameter float pan = 0.0 : range(-10, 10);
+parameter float rotVertical = 0.0 : range(-PI, PI);
+parameter float rotHorizontal = 0.0 : range(-PI, PI);
+parameter float cameraRadius = 2 : range(0, 10);
+
+glsl struct Camera {
+  vec3 pos;
+  vec3 lookAt;
+  vec3 up;
+};
+
+glsl struct Ray {
+  vec3 rayOrigin;
+  vec3 rayDirection;
+};
+
+// compute camera transformation matrix
+glsl mat3 camera(Camera cam) {
+  vec3 cameraDirection = normalize(cam.lookAt - cam.pos);
+  vec3 cameraRight = normalize(cross(cam.up, cameraDirection));
+  vec3 cameraUp = normalize(cross(cameraDirection, cameraRight));
+  return mat3(-cameraRight, cameraUp, -cameraDirection);
+}
+
+// compute ray
+glsl Ray getRay(Camera cam, vec2 uv) {
+  vec3 rayOrigin = cam.pos;
+  vec3 rayDirection = camera(cam) * normalize(vec3(uv, -1.0));
+  rayOrigin.yz = rotate(rayOrigin.yz, rotVertical) * cameraRadius;
+  rayOrigin.xz = rotate(rayOrigin.xz, rotHorizontal) * cameraRadius;
+  return Ray(rayOrigin, rayDirection);
+}
